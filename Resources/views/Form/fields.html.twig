@@ -27,13 +27,13 @@
 
 {% block form_widget_compound %}
 {% spaceless %}
-    {% if not form.hasParent() %}
+    {% if form.parent == null %}
         {% if render_fieldset %}<fieldset>{% endif %}
         {% if show_legend %}{{ block('form_legend') }}{% endif %}
     {% endif %}
     {{ block('form_rows_visible') }}
     {{ form_rest(form) }}
-    {% if not form.hasParent() %}
+    {% if form.parent == null %}
         {% if render_fieldset %}</fieldset>{% endif %}
     {% endif %}
 {% endspaceless %}
@@ -63,12 +63,12 @@
 
 {% block checkbox_widget %}
 {% spaceless %}
-{% if form.hasParent() and 'choice' not in form.parent.vars.block_prefixes and label_render %}
+{% if form.parent != null and 'choice' not in form.parent.vars.block_prefixes and label_render %}
     <label class="checkbox{% if inline is defined and inline %} inline{% endif %}">
 {% endif %}
         <input type="checkbox" {{ block('widget_attributes') }}{% if value is defined %} value="{{ value }}"{% endif %}{% if checked %} checked="checked"{% endif %}/> {{ help_inline|trans({}, translation_domain)|raw }}
-{% if form.hasParent() and 'choice' not in form.parent.vars.block_prefixes %}
-    {% if label_render %}
+{% if form.parent != null and 'choice' not in form.parent.vars.block_prefixes %}
+    {% if label_render and widget_checkbox_label in ['both', 'widget'] %}
         {{ label|trans({}, translation_domain) }}
     {% endif %}
     {% set help_inline = false %}
@@ -80,7 +80,27 @@
 {% block date_widget %}
 {% spaceless %}
 {% if widget == 'single_text' %}
-    {{ block('form_widget_simple') }}
+    {% if datepicker is defined %}
+        <div class="input-{{ widget_addon.type }} date" {{ block('widget_container_attributes') }} data-date="{{ value }}" data-date-format="{{ format|lower }}" data-form="datepicker">
+            {% if widget_addon.type == 'prepend' %}
+                {{ block('widget_addon') }}
+            {% endif %}
+            {% set attr = attr|merge({'class': attr.class|default('') ~ ' not-removable grd-white'}) %}
+            <input type="text" {{ block('widget_attributes') }} value="{{ value }}"  data-form="datepicker" data-date-format="{{ format|lower }}"/>
+            {% if widget_addon.type == 'append' %}
+                {{ block('widget_addon') }}
+            {% endif %}
+            <script type="text/javascript">
+                $(document).ready(function () {
+                    $({{ id }}).datepicker();
+                });
+
+
+            </script>
+        </div>
+    {% else %}
+        {{ block('form_widget_simple') }}
+    {% endif %}
 {% else %}
         {% set attr = attr|merge({'class': attr.class|default('inline')}) %}
             {{ date_pattern|replace({
@@ -152,6 +172,7 @@
 {% endblock form_legend %}
 
 {% block form_label %}
+{% if 'checkbox' not in block_prefixes or widget_checkbox_label in ['label', 'both'] %}
 {% spaceless %}
     {% if label is not sameas(false) %}
         {% if label is empty %}
@@ -168,12 +189,35 @@
             {{ block('form_widget_add_btn') }}
         {% endif %}
         {% if help_label %}
-            <p class="help-block">{{ help_label|trans({}, translation_domain) }}</p>
+            {{ block('help_label') }}
+        {% endif %}
+        {% if help_label_tooltip_title %}
+            {{ block('help_label_tooltip_title') }}
         {% endif %}
         </label>
     {% endif %}
 {% endspaceless %}
+{% endif %}
 {% endblock form_label %}
+
+{% block help_label %}
+    <p class="help-block">{{ help_label|trans({}, translation_domain) }}</p>
+{% endblock help_label %}
+
+{% block help_label_tooltip_title %}
+    <p class="help-inline">
+        <a href="#" id="{{ id }}" title="{{ help_label_tooltip_title|trans({}, translation_domain) }}"><i class="icon-info-sign"></i></a>
+        <script type="text/javascript">
+            $(document).ready(function () {
+                $({{ id }}).tooltip({
+                    'placement': '{{ help_label_tooltip_placement }}'
+                });
+            });
+        </script>
+    </p>
+{% endblock help_label_tooltip_title %}
+
+
 
 {# Rows #}
 
@@ -273,7 +317,7 @@
 {% spaceless %}
 {# prevent deep nesting wrong context copy error #}
 {% from 'MopaBootstrapBundle::icons.html.twig' import icon %}
-<span class="add-on">{{ (widget_addon.text|default(false) ? widget_addon.text : icon(widget_addon.icon))|raw  }}</span>
+<span class="add-on">{{ (widget_addon.text|default(false) ? widget_addon.text|trans({}, translation_domain) : icon(widget_addon.icon))|raw  }}</span>
 {% endspaceless %}
 {% endblock widget_addon %}
 
@@ -326,10 +370,10 @@
 {% spaceless %}
 {% if error_type %}
     {{ error_type }}
-{% elseif form.hasParent() != 0 %}
+{% elseif form.parent != null %}
     {% set form = form.parent %}
     {{ block('error_type') }}
-{% elseif form.hasParent() == 0 %}
+{% elseif form.parent == null %}
     {{ form.vars.error_type | default('inline') }}
 {% endif %}
 {% endspaceless %}
@@ -339,9 +383,9 @@
 
 {% block widget_control_group_start %}
 {% spaceless %}
-{% if widget_control_group|default(false) or not form.hasParent() %}
-    {% if prototype is defined %}        
-        {% set data_prototype = 'collection' in form.vars.block_prefixes and not omit_collection_item ? '<div class="collection-item">' ~ form_row(prototype) ~ '</div>' : form_row(prototype) %}        
+{% if widget_control_group|default(false) or form.parent == null %}
+    {% if prototype is defined %}
+        {% set data_prototype = 'collection' in form.vars.block_prefixes and not omit_collection_item ? '<div class="collection-item">' ~ form_row(prototype) ~ '</div>' : form_row(prototype) %}
         {% set widget_control_group_attr = widget_control_group_attr|merge({'data-prototype': data_prototype}) %}
     {% endif %}
     {% set widget_control_group_attr = widget_control_group_attr|merge({'id': id ~ '_control_group', 'class': widget_control_group_attr.class|default('') ~ ' control-group'}) %}
@@ -353,7 +397,7 @@
 	{% endif %}
     <div {% for attrname,attrvalue in widget_control_group_attr %} {{attrname}}="{{attrvalue}}"{% endfor %}>
     {# a form item containing the field in block_prefixes is a near subform or a field directly #}
-    {% if (form.hasChildren() and form.hasParent())
+    {% if (form|length > 0 and form.parent != null)
         and 'field' not in form.vars.block_prefixes %}
         {% if show_child_legend%}
             {{ block('form_legend') }}
@@ -365,7 +409,7 @@
             {{ form_label(form, label|default(null)) }}
         {% endif %}
     {% endif %}
-    {% if widget_controls|default(false) or not form.hasParent() %}
+    {% if widget_controls|default(false) or form.parent == null %}
         {% set widget_controls_attr = widget_controls_attr|merge({'class': widget_controls_attr.class|default('') ~ ' controls'}) %}
         <div {% for attrname,attrvalue in widget_controls_attr %}{{attrname}}="{{attrvalue}}" {% endfor %}>
     {% endif %}
@@ -379,8 +423,8 @@
 
 {% block widget_control_group_end %}
 {% spaceless %}
-{% if widget_control_group|default(false) or not form.hasParent() %}
-    {% if widget_controls|default(false) or not form.hasParent() %}
+{% if widget_control_group|default(false) or form.parent == null %}
+    {% if widget_controls|default(false) or form.parent == null %}
         </div>
     {% endif %}
     </div>

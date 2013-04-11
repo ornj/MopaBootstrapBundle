@@ -4,7 +4,6 @@
     "description": "Easy integration of twitters bootstrap into symfony2",
     "keywords": ["form", "extra form", "bootstrap", "bootstrap form", "template"],
     "license": "MIT",
-    "version": "master",
     "authors": [
         {
             "name": "Philipp A. Mohrenweiser",
@@ -22,8 +21,8 @@
     },
     "target-dir": "Mopa/Bundle/BootstrapBundle",
     "require": {
-        "symfony/symfony": ">=2.1,<2.3-dev",
-        "mopa/composer-bridge": "dev-master"
+        "symfony/symfony": ">=2.1,<2.4-dev",
+        "mopa/composer-bridge": "1.*"
     },
     "suggest":  {
         "twitter/bootstrap": "2.0.*",

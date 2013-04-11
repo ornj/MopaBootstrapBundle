@@ -55,10 +55,6 @@
                 if (this.$element.parents('.collection-item').length !== 0){
                     var row = this.$element.closest('.collection-item');
                     row.remove();
-                    
-                    /**
-                     * This line is causing issues
-                     */
                     //$(this.options.collection_id).trigger('remove.mopa-collection-item', [row]);
                 }
         }
